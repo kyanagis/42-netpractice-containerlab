@@ -1,0 +1,99 @@
+# topology: level10 (構成とアドレスはREADME.md)
+# containerlab topology format: https://containerlab.dev/manual/topo-def-file/
+name: level10
+mgmt:
+  network: npclab
+  ipv4-subnet: 172.30.30.0/24
+topology:
+  nodes:
+    inet:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      sysctls:
+        net.ipv4.ip_forward: "1"
+        net.ipv4.conf.all.rp_filter: "0"
+        net.ipv4.conf.default.rp_filter: "0"
+      exec:
+        - ip addr add 163.172.250.1/28 dev eth1
+        - ip link set eth1 up
+        - ip route add 157.42.103.0/24 via 163.172.250.12
+    r1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      sysctls:
+        net.ipv4.ip_forward: "1"
+        net.ipv4.conf.all.rp_filter: "0"
+        net.ipv4.conf.default.rp_filter: "0"
+      exec:
+        - ip addr add 157.42.103.1/25 dev eth1
+        - ip addr add 163.172.250.12/28 dev eth2
+        - ip addr add 157.42.103.254/30 dev eth3
+        - ip link set eth1 up
+        - ip link set eth2 up
+        - ip link set eth3 up
+        - ip route add 157.42.103.192/27 via 157.42.103.253
+        - ip route add 157.42.103.128/26 via 157.42.103.253
+        - ip route replace default via 163.172.250.1
+    r2:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      sysctls:
+        net.ipv4.ip_forward: "1"
+        net.ipv4.conf.all.rp_filter: "0"
+        net.ipv4.conf.default.rp_filter: "0"
+      exec:
+        - ip addr add 157.42.103.253/30 dev eth1
+        - ip addr add 157.42.103.194/27 dev eth2
+        - ip addr add 157.42.103.129/26 dev eth3
+        - ip link set eth1 up
+        - ip link set eth2 up
+        - ip link set eth3 up
+        - ip route replace default via 157.42.103.254
+    sw1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip link add br0 type bridge
+        - ip link set br0 up
+        - ip link set eth1 master br0
+        - ip link set eth2 master br0
+        - ip link set eth3 master br0
+        - ip link set eth1 up
+        - ip link set eth2 up
+        - ip link set eth3 up
+    h1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 157.42.103.2/25 dev eth1
+        - ip link set eth1 up
+        - ip route replace default via 157.42.103.1
+    h2:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 157.42.103.3/25 dev eth1
+        - ip link set eth1 up
+        - ip route replace default via 157.42.103.1
+    h3:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 157.42.103.193/27 dev eth1
+        - ip link set eth1 up
+        - ip route replace default via 157.42.103.194
+    h4:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 157.42.103.131/26 dev eth1
+        - ip link set eth1 up
+        - ip route replace default via 157.42.103.129
+  links:
+    - endpoints: ["inet:eth1", "r1:eth2"]
+    - endpoints: ["r1:eth1", "sw1:eth1"]
+    - endpoints: ["sw1:eth2", "h1:eth1"]
+    - endpoints: ["sw1:eth3", "h2:eth1"]
+    - endpoints: ["r1:eth3", "r2:eth1"]
+    - endpoints: ["r2:eth2", "h3:eth1"]
+    - endpoints: ["r2:eth3", "h4:eth1"]
