@@ -1,0 +1,4 @@
+# containerlab が deploy 時に topo の隣へ生成する状態ディレクトリ
+labs/*/clab-*/
+# mac の雑多ファイル
+.DS_Store
