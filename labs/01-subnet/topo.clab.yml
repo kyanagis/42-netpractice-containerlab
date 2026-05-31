@@ -1,0 +1,22 @@
+# topology: subnet (構成とアドレスはREADME.md)
+# containerlab topology format: https://containerlab.dev/manual/topo-def-file/
+name: subnet
+mgmt:
+  network: npclab
+  ipv4-subnet: 172.30.30.0/24
+topology:
+  nodes:
+    pc1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 172.16.5.65/26 dev eth1
+        - ip link set eth1 up
+    pc2:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 172.16.5.66/26 dev eth1
+        - ip link set eth1 up
+  links:
+    - endpoints: ["pc1:eth1", "pc2:eth1"]
