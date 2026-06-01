@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -f /etc/profile.d/np-clab.sh ]]; then
+  # shellcheck disable=SC1091
+  source /etc/profile.d/np-clab.sh
+fi
+
+REAL_CLAB="${REAL_CLAB:-/usr/bin/containerlab.real}"
+CLAB_IMAGE="${CLAB_IMAGE:-ghcr.io/srl-labs/clab:0.75.0}"
+REPO_DIR="${REPO_DIR:-/home/lab/netpractice-containerlab}"
+DOCKER_SOCKET_HOST="${DOCKER_SOCKET_HOST:-/var/run/docker.sock}"
+
+if [[ "${CLAB_RUN_LOCAL:-0}" = "1" || -z "${CLAB_WORKSPACE_VOLUME:-}${HOST_REPO_DIR:-}" ]]; then
+  exec "$REAL_CLAB" "$@"
+fi
+
+mount_args=()
+if [[ -n "${CLAB_WORKSPACE_VOLUME:-}" ]]; then
+  mount_args=(-v "${CLAB_WORKSPACE_VOLUME}:${REPO_DIR}")
+else
+  mount_args=(-v "${HOST_REPO_DIR}:${REPO_DIR}")
+fi
+
+workdir="$PWD"
+case "$workdir" in
+  "$REPO_DIR"|"$REPO_DIR"/*) ;;
+  *) workdir="$REPO_DIR" ;;
+esac
+
+exec docker run --rm --privileged --network host --pid host \
+  -v "${DOCKER_SOCKET_HOST}:/var/run/docker.sock" \
+  "${mount_args[@]}" \
+  -w "$workdir" \
+  "$CLAB_IMAGE" containerlab "$@"

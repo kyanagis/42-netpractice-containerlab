@@ -8,14 +8,21 @@
 # containerlab: https://containerlab.dev/
 FROM ghcr.io/srl-labs/clab:0.75.0
 
-RUN apk add --no-cache sudo shadow openssh \
+RUN apk add --no-cache sudo shadow openssh libgcc libstdc++ gcompat \
     && useradd -m -s /bin/bash lab \
+    && groupadd -f docker \
+    && groupadd -f clab_admins \
+    && usermod -aG docker,clab_admins lab \
     && echo 'lab:lab' | chpasswd \
     && echo 'lab ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/lab \
+    && sed -i 's/^AllowTcpForwarding no/AllowTcpForwarding yes/' /etc/ssh/sshd_config \
     && printf 'Port 2222\nPasswordAuthentication yes\n' >> /etc/ssh/sshd_config
 
 COPY --chown=lab:lab . /home/lab/netpractice-containerlab
-ENV LAB_RUNTIME=linux
+RUN mv /usr/bin/containerlab /usr/bin/containerlab.real
+COPY bin/containerlab /usr/bin/containerlab
+RUN chmod 755 /usr/bin/containerlab
+ENV LAB_RUNTIME=docker
 EXPOSE 2222
 
 # 起動時: host鍵生成 → マウントされたdocker.sockをlabが使えるように → sshd

@@ -5,6 +5,7 @@ set -euo pipefail
 
 RUNTIME="${LAB_RUNTIME:-docker}"
 CLAB_IMAGE="${CLAB_IMAGE:-ghcr.io/srl-labs/clab}"
+DOCKER_SOCKET_HOST="${DOCKER_SOCKET_HOST:-/var/run/docker.sock}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABS_DIR="$REPO_DIR/labs"
 
@@ -13,9 +14,15 @@ clab() {
   if [ "$RUNTIME" = linux ]; then
     sudo containerlab "$@"
   else
+    local mount_args=()
+    if [[ -n "${CLAB_WORKSPACE_VOLUME:-}" ]]; then
+      mount_args=(-v "${CLAB_WORKSPACE_VOLUME}:$REPO_DIR")
+    else
+      mount_args=(-v "${HOST_REPO_DIR:-$REPO_DIR}:$REPO_DIR")
+    fi
     docker run --rm --privileged --network host --pid host \
-      -v /var/run/docker.sock:/var/run/docker.sock \
-      -v "$REPO_DIR:$REPO_DIR" -w "$REPO_DIR" \
+      -v "$DOCKER_SOCKET_HOST:/var/run/docker.sock" \
+      "${mount_args[@]}" -w "$REPO_DIR" \
       "$CLAB_IMAGE" containerlab "$@"
   fi
 }
