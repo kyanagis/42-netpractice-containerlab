@@ -1,4 +1,4 @@
-# CI: shellcheck + topology parse + 実deploy/ping/destroy検証
+# CI: shellcheck + topology parse + 実deploy/ping/destroy検証 + 校舎用imageをghcrにpush
 # containerlab: https://containerlab.dev/  (CI install: https://containerlab.dev/install/)
 name: ci
 
@@ -34,3 +34,24 @@ jobs:
           done
       - name: Deploy / ping / destroy all labs
         run: bash lab.sh test-all
+
+  # テスト通過後に校舎用ラボ環境イメージを ghcr.io へ push (mainのみ)
+  image:
+    needs: [shellcheck, labs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ghcr.io/kyanagis/42-netpractice-containerlab:latest
