@@ -20,3 +20,13 @@ export LAB_RUNTIME=docker        # Linuxにclab導入済みなら linux
 ./lab.sh down  level10
 ./lab.sh test-all                # 全ラボを up->test->down
 ```
+
+~/.ssh/config
+```
+  Host np-lab
+      HostName localhost
+      Port 2222
+      User lab
+      StrictHostKeyChecking no
+      UserKnownHostsFile /dev/null
+```
