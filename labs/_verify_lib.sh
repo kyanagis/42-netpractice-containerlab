@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
-# 各verify.shがsourceする到達性チェック共通lib。runtime: LAB_RUNTIME=colima(既定)|docker|linux
+# 各verify.shがsourceする到達性チェック共通lib。runtime: LAB_RUNTIME=docker(既定)|linux
 # containerlab docs: https://containerlab.dev/
 set -euo pipefail
 
-RUNTIME="${LAB_RUNTIME:-colima}"
-PROFILE="${CLAB_PROFILE:-clab}"
-_filter() { grep -vE 'level=warning|delete ~/\.colima|config/colima' || true; }
+RUNTIME="${LAB_RUNTIME:-docker}"
 
+# ラボノードはホストdockerに建つので直接 exec(docker/linux共通)
 nexec() {
   local node="$1"; shift
-  if [ "$RUNTIME" = colima ]; then
-    colima ssh -p "$PROFILE" -- docker exec "clab-${LAB}-${node}" "$@" 2> >(_filter >&2)
-  else
-    docker exec "clab-${LAB}-${node}" "$@"
-  fi
+  docker exec "clab-${LAB}-${node}" "$@"
 }
 
 run_goals() {

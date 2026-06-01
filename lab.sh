@@ -1,49 +1,33 @@
 #!/usr/bin/env bash
-# NetPractice連動ラボのランナー。runtime: LAB_RUNTIME=colima(既定)|docker|linux
+# NetPractice連動ラボのランナー。runtime: LAB_RUNTIME=docker(既定)|linux
 # containerlab CLI docs: https://containerlab.dev/cmd/
 set -euo pipefail
 
-RUNTIME="${LAB_RUNTIME:-colima}"
-PROFILE="${CLAB_PROFILE:-clab}"
+RUNTIME="${LAB_RUNTIME:-docker}"
 CLAB_IMAGE="${CLAB_IMAGE:-ghcr.io/srl-labs/clab}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABS_DIR="$REPO_DIR/labs"
 
-_filter() { grep -vE 'level=warning|delete ~/\.colima|config/colima' || true; }
-
+# containerlab を実行。linux=ホスト直接(sudo), docker=clab特権コンテナ。
 clab() {
-  case "$RUNTIME" in
-    docker)
-      docker run --rm --privileged --network host --pid host \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v "$REPO_DIR:$REPO_DIR" -w "$REPO_DIR" \
-        "$CLAB_IMAGE" containerlab "$@" ;;
-    linux)
-      sudo containerlab "$@" ;;
-    *)
-      colima ssh -p "$PROFILE" -- sudo containerlab "$@" 2> >(_filter >&2) ;;
-  esac
-}
-
-node_exec() {
-  local flags="$1" cname="$2"; shift 2
-  if [ "$RUNTIME" = colima ]; then
-    colima ssh -p "$PROFILE" -- docker exec $flags "$cname" "$@" 2> >(_filter >&2)
+  if [ "$RUNTIME" = linux ]; then
+    sudo containerlab "$@"
   else
-    docker exec $flags "$cname" "$@"
+    docker run --rm --privileged --network host --pid host \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v "$REPO_DIR:$REPO_DIR" -w "$REPO_DIR" \
+      "$CLAB_IMAGE" containerlab "$@"
   fi
 }
 
+# ノード(コンテナ)内でコマンド実行。ラボノードはホストdockerに建つので直接 exec。
+node_exec() { docker exec "$@"; }
+
 require_runtime() {
-  case "$RUNTIME" in
-    docker)
-      docker info >/dev/null 2>&1 || { echo "ERROR: dockerが動いていません(Docker Desktop)。SETUP_docker.md参照。" >&2; exit 1; } ;;
-    linux)
-      command -v containerlab >/dev/null 2>&1 || { echo "ERROR: containerlabが見つかりません。SETUP_linux.md参照。" >&2; exit 1; }
-      docker info >/dev/null 2>&1 || { echo "ERROR: dockerが動いていません。" >&2; exit 1; } ;;
-    *)
-      colima status -p "$PROFILE" >/dev/null 2>&1 || { echo "ERROR: colima profile '$PROFILE' が未起動。SETUP_colima.md参照。" >&2; exit 1; } ;;
-  esac
+  docker info >/dev/null 2>&1 || { echo "ERROR: dockerが動いていません。SETUP_docker.md参照。" >&2; exit 1; }
+  if [ "$RUNTIME" = linux ]; then
+    command -v containerlab >/dev/null 2>&1 || { echo "ERROR: containerlabが見つかりません。SETUP_linux.md参照。" >&2; exit 1; }
+  fi
 }
 
 topo_of() {
@@ -63,7 +47,7 @@ list_labs() {
 
 usage() {
   cat <<'EOF'
-usage: ./lab.sh <command> [name] [node]   (runtime: LAB_RUNTIME=colima|docker|linux)
+usage: ./lab.sh <command> [name] [node]   (runtime: LAB_RUNTIME=docker|linux)
   up|down|test|status|graph <name>   構築/撤去/検証/一覧/図
   shell <name> <node>                ノードに入る
   test-all                           全ラボをup->test->down
@@ -85,7 +69,7 @@ case "$cmd" in
   shell)
     require_runtime
     node="${3:?usage: lab.sh shell <name> <node>}"
-    node_exec "-it" "clab-$(labname_of "$name")-${node}" bash ;;
+    node_exec -it "clab-$(labname_of "$name")-${node}" bash ;;
   test-all|all)
     require_runtime
     fail=0; failed=""
