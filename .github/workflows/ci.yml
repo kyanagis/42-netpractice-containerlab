@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
-      - run: shellcheck --severity=error lab.sh labs/_verify_lib.sh labs/*/verify.sh
+      - run: shellcheck --severity=error lab.sh bin/containerlab bin/np-clab-env.sh labs/_verify_lib.sh labs/*/verify.sh
 
   labs:
     runs-on: ubuntu-latest
