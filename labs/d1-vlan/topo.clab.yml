@@ -1,0 +1,28 @@
+# topology: vlan (配線+ブリッジ(vlan_filtering)は既与。VLAN割当を solution/problem で埋める)
+# Linux bridge VLAN filtering: https://wiki.archlinux.org/title/Network_bridge
+name: vlan
+mgmt:
+  network: npclab
+  ipv4-subnet: 172.30.30.0/24
+topology:
+  nodes:
+    sw1: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: [
+      "ip link add br0 type bridge vlan_filtering 1", "ip link set br0 up",
+      "ip link set eth1 master br0", "ip link set eth2 master br0", "ip link set eth3 master br0",
+      "ip link set eth1 up", "ip link set eth2 up", "ip link set eth3 up",
+      "bridge vlan del dev eth1 vid 1", "bridge vlan del dev eth2 vid 1", "bridge vlan del dev eth3 vid 1" ] }
+    sw2: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: [
+      "ip link add br0 type bridge vlan_filtering 1", "ip link set br0 up",
+      "ip link set eth1 master br0", "ip link set eth2 master br0", "ip link set eth3 master br0",
+      "ip link set eth1 up", "ip link set eth2 up", "ip link set eth3 up",
+      "bridge vlan del dev eth1 vid 1", "bridge vlan del dev eth2 vid 1", "bridge vlan del dev eth3 vid 1" ] }
+    h1: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+    h2: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+    h3: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+    h4: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+  links:
+    - endpoints: ["sw1:eth1", "h1:eth1"]
+    - endpoints: ["sw1:eth2", "h2:eth1"]
+    - endpoints: ["sw1:eth3", "sw2:eth3"]
+    - endpoints: ["sw2:eth1", "h3:eth1"]
+    - endpoints: ["sw2:eth2", "h4:eth1"]
