@@ -1,0 +1,31 @@
+# topology: stp (三角ループ+ブリッジ(STPオフ/優先度/高速タイマ)は既与。STP有効化を solution/problem で埋める)
+# Linux bridge STP: priority小=root。冗長ポートをblockingにしてループを断つ。
+name: stp
+mgmt:
+  network: npclab
+  ipv4-subnet: 172.30.30.0/24
+topology:
+  nodes:
+    sw1: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: [
+      "ip link add br0 type bridge stp_state 0",
+      "ip link set br0 type bridge priority 4096 forward_delay 400 max_age 600 hello_time 100",
+      "ip link set eth1 master br0", "ip link set eth2 master br0", "ip link set eth3 master br0",
+      "ip link set br0 up", "ip link set eth1 up", "ip link set eth2 up", "ip link set eth3 up" ] }
+    sw2: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: [
+      "ip link add br0 type bridge stp_state 0",
+      "ip link set br0 type bridge priority 8192 forward_delay 400 max_age 600 hello_time 100",
+      "ip link set eth1 master br0", "ip link set eth2 master br0",
+      "ip link set br0 up", "ip link set eth1 up", "ip link set eth2 up" ] }
+    sw3: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: [
+      "ip link add br0 type bridge stp_state 0",
+      "ip link set br0 type bridge priority 12288 forward_delay 400 max_age 600 hello_time 100",
+      "ip link set eth1 master br0", "ip link set eth2 master br0", "ip link set eth3 master br0",
+      "ip link set br0 up", "ip link set eth1 up", "ip link set eth2 up", "ip link set eth3 up" ] }
+    h1: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+    h2: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+  links:
+    - endpoints: ["sw1:eth1", "h1:eth1"]
+    - endpoints: ["sw1:eth2", "sw2:eth1"]
+    - endpoints: ["sw1:eth3", "sw3:eth1"]
+    - endpoints: ["sw2:eth2", "sw3:eth2"]
+    - endpoints: ["sw3:eth3", "h2:eth1"]
