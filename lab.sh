@@ -10,13 +10,26 @@ DOCKER_SOCKET_HOST="${DOCKER_SOCKET_HOST:-/var/run/docker.sock}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABS_DIR="$REPO_DIR/labs"
 
+if [[ -f "$REPO_DIR/bin/np-clab-env.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$REPO_DIR/bin/np-clab-env.sh"
+elif [[ -f /usr/local/lib/np-clab-env.sh ]]; then
+  # shellcheck disable=SC1091
+  source /usr/local/lib/np-clab-env.sh
+fi
+
 # containerlab を実行。linux=ホスト直接(sudo), docker=clab特権コンテナ。
 clab() {
   if [ "$RUNTIME" = linux ]; then
     sudo containerlab "$@"
   else
+    if declare -F np_clab_prepare_workspace >/dev/null; then
+      np_clab_prepare_workspace "$REPO_DIR"
+    fi
     local mount_args=()
-    if [[ -n "${CLAB_WORKSPACE_VOLUME:-}" ]]; then
+    if [[ -n "${NP_CLAB_MOUNT_SOURCE:-}" ]]; then
+      mount_args=(-v "${NP_CLAB_MOUNT_SOURCE}:${NP_CLAB_MOUNT_TARGET:-$REPO_DIR}")
+    elif [[ -n "${CLAB_WORKSPACE_VOLUME:-}" ]]; then
       mount_args=(-v "${CLAB_WORKSPACE_VOLUME}:$REPO_DIR")
     else
       mount_args=(-v "${HOST_REPO_DIR:-$REPO_DIR}:$REPO_DIR")
@@ -39,12 +52,17 @@ require_runtime() {
 }
 
 lab_dir()  { local d="$LABS_DIR/$1"; [[ -d "$d" ]] || { echo "ERROR: lab '$1' が見つかりません ('./lab.sh ls' で一覧)" >&2; exit 1; }; printf '%s' "$d"; }
+require_lab() { lab_dir "$1" >/dev/null; }
 topo_of()  { local t; t="$(lab_dir "$1")/topo.clab.yml"; [[ -f "$t" ]] || { echo "ERROR: $t がありません" >&2; exit 1; }; printf '%s' "$t"; }
-labname_of() { grep -E '^name:' "$(topo_of "$1")" | head -1 | awk '{print $2}'; }
-is_fillin()  { [[ -f "$(lab_dir "$1")/solution.conf" ]]; }
+labname_of() { local topo; topo="$(topo_of "$1")"; grep -E '^name:' "$topo" | head -1 | awk '{print $2}'; }
+is_fillin()  { local d="$LABS_DIR/$1"; [[ -d "$d" && -f "$d/solution.conf" ]]; }
 
 # 配線トポロジを(再)構築。L3設定は持たない白紙状態。
-deploy_wiring() { clab deploy -t "$(topo_of "$1")" --reconfigure >/dev/null; }
+deploy_wiring() {
+  local topo
+  topo="$(topo_of "$1")"
+  clab deploy -t "$topo" --reconfigure >/dev/null
+}
 
 # confファイルの各行をノード内で実行。書式: "<node>: <shで実行するコマンド>"
 #  '#'始まりと空行は無視。'___'を含む行は未記入として実行をスキップ(警告)。
@@ -122,34 +140,42 @@ list_labs() {
 cmd="${1:-}"; name="${2:-}"
 case "$cmd" in
   apply)
+    require_lab "$name"
     require_runtime
     is_fillin "$name" || { echo "ERROR: '$name' は穴埋めラボではありません" >&2; exit 1; }
     build_and_verify "$name" "$(lab_dir "$name")/problem.conf" ;;
   solve|reveal)
+    require_lab "$name"
     require_runtime
     is_fillin "$name" || { echo "ERROR: '$name' は穴埋めラボではありません" >&2; exit 1; }
     build_and_verify "$name" "$(lab_dir "$name")/solution.conf" ;;
   reset)
-    require_runtime; deploy_wiring "$name"; echo "白紙状態にしました: $name (apply で解答を適用)" ;;
+    require_lab "$name"; require_runtime; deploy_wiring "$name"; echo "白紙状態にしました: $name (apply で解答を適用)" ;;
   up|deploy)
+    require_lab "$name"
     require_runtime
     if is_fillin "$name"; then build_and_verify "$name" "$(lab_dir "$name")/problem.conf"
-    else clab deploy -t "$(topo_of "$name")" --reconfigure; fi ;;
-  down|destroy)   require_runtime; clab destroy -t "$(topo_of "$name")" --cleanup ;;
-  test)           require_runtime; bash "$(lab_dir "$name")/verify.sh" ;;
+    else topo="$(topo_of "$name")"; clab deploy -t "$topo" --reconfigure; fi ;;
+  down|destroy)   require_lab "$name"; require_runtime; topo="$(topo_of "$name")"; clab destroy -t "$topo" --cleanup ;;
+  test)           require_lab "$name"; require_runtime; bash "$(lab_dir "$name")/verify.sh" ;;
   hint)
+    require_lab "$name"
     f="$(lab_dir "$name")/README.md"
     [[ -f "$f" ]] && cat "$f" || echo "(READMEなし: $name)" ;;
-  status|inspect) require_runtime; clab inspect -t "$(topo_of "$name")" ;;
+  status|inspect) require_lab "$name"; require_runtime; topo="$(topo_of "$name")"; clab inspect -t "$topo" ;;
   graph)
+    require_lab "$name"
     require_runtime
-    clab graph -t "$(topo_of "$name")" --offline --mermaid >/dev/null 2>&1 || true
+    topo="$(topo_of "$name")"
+    clab graph -t "$topo" --offline --mermaid >/dev/null 2>&1 || true
     mmd="$(ls "$(lab_dir "$name")"/clab-*/graph/*.mermaid 2>/dev/null | head -1 || true)"
-    if [[ -n "$mmd" && -f "$mmd" ]]; then cat "$mmd"; else clab inspect -t "$(topo_of "$name")"; fi ;;
+    if [[ -n "$mmd" && -f "$mmd" ]]; then cat "$mmd"; else clab inspect -t "$topo"; fi ;;
   shell)
+    require_lab "$name"
     require_runtime
     node="${3:?usage: lab.sh shell <name> <node>}"
-    node_exec -it "clab-$(labname_of "$name")-${node}" bash ;;
+    labname="$(labname_of "$name")"
+    node_exec -it "clab-${labname}-${node}" bash ;;
   test-all|all)
     require_runtime
     fail=0; failed=""

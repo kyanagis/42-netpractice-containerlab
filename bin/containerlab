@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -f /etc/profile.d/np-clab.sh ]]; then
+if [[ -f /usr/local/lib/np-clab-env.sh ]]; then
+  # shellcheck disable=SC1091
+  source /usr/local/lib/np-clab-env.sh
+elif [[ -f /home/lab/netpractice-containerlab/bin/np-clab-env.sh ]]; then
+  # shellcheck disable=SC1091
+  source /home/lab/netpractice-containerlab/bin/np-clab-env.sh
+elif [[ -f /etc/profile.d/np-clab.sh ]]; then
   # shellcheck disable=SC1091
   source /etc/profile.d/np-clab.sh
 fi
@@ -11,12 +17,22 @@ CLAB_IMAGE="${CLAB_IMAGE:-ghcr.io/srl-labs/clab:0.75.0}"
 REPO_DIR="${REPO_DIR:-/home/lab/netpractice-containerlab}"
 DOCKER_SOCKET_HOST="${DOCKER_SOCKET_HOST:-/var/run/docker.sock}"
 
-if [[ "${CLAB_RUN_LOCAL:-0}" = "1" || -z "${CLAB_WORKSPACE_VOLUME:-}${HOST_REPO_DIR:-}" ]]; then
+if [[ "${CLAB_RUN_LOCAL:-0}" = "1" ]]; then
+  exec "$REAL_CLAB" "$@"
+fi
+
+if declare -F np_clab_prepare_workspace >/dev/null; then
+  np_clab_prepare_workspace "$REPO_DIR"
+fi
+
+if [[ -z "${NP_CLAB_MOUNT_SOURCE:-}${CLAB_WORKSPACE_VOLUME:-}${HOST_REPO_DIR:-}" ]]; then
   exec "$REAL_CLAB" "$@"
 fi
 
 mount_args=()
-if [[ -n "${CLAB_WORKSPACE_VOLUME:-}" ]]; then
+if [[ -n "${NP_CLAB_MOUNT_SOURCE:-}" ]]; then
+  mount_args=(-v "${NP_CLAB_MOUNT_SOURCE}:${NP_CLAB_MOUNT_TARGET:-$REPO_DIR}")
+elif [[ -n "${CLAB_WORKSPACE_VOLUME:-}" ]]; then
   mount_args=(-v "${CLAB_WORKSPACE_VOLUME}:${REPO_DIR}")
 else
   mount_args=(-v "${HOST_REPO_DIR}:${REPO_DIR}")
