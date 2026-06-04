@@ -1,0 +1,18 @@
+# topology: ipv6 (配線は既与。IPv6アドレスと経路を埋める)
+# IPv6 addressing: RFC 4291 / documentation prefix 2001:db8::/32 (RFC 3849)
+name: ipv6
+mgmt:
+  network: npclab
+  ipv4-subnet: 172.30.30.0/24
+topology:
+  nodes:
+    r:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      sysctls: { net.ipv6.conf.all.forwarding: "1" }
+      exec: ["ip link set eth1 up", "ip link set eth2 up"]
+    h1: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+    h2: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+  links:
+    - endpoints: ["h1:eth1", "r:eth1"]
+    - endpoints: ["r:eth2", "h2:eth1"]
