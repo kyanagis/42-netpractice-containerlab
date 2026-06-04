@@ -1,4 +1,4 @@
-# topology: level07 (構成とアドレスはREADME.md)
+# topology: level07 (配線のみ。L3は solution.conf/problem.conf)
 # containerlab topology format: https://containerlab.dev/manual/topo-def-file/
 name: level07
 mgmt:
@@ -9,10 +9,7 @@ topology:
     a:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 111.198.14.2/30 dev eth1
-        - ip link set eth1 up
-        - ip route replace default via 111.198.14.1
+      exec: [ip link set eth1 up]
     r1:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
@@ -21,11 +18,8 @@ topology:
         net.ipv4.conf.all.rp_filter: "0"
         net.ipv4.conf.default.rp_filter: "0"
       exec:
-        - ip addr add 111.198.14.1/30 dev eth1
-        - ip addr add 111.198.14.254/30 dev eth2
         - ip link set eth1 up
         - ip link set eth2 up
-        - ip route add 111.198.14.248/30 via 111.198.14.253
     r2:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
@@ -34,18 +28,12 @@ topology:
         net.ipv4.conf.all.rp_filter: "0"
         net.ipv4.conf.default.rp_filter: "0"
       exec:
-        - ip addr add 111.198.14.253/30 dev eth1
-        - ip addr add 111.198.14.249/30 dev eth2
         - ip link set eth1 up
         - ip link set eth2 up
-        - ip route add 111.198.14.0/30 via 111.198.14.254
     c:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 111.198.14.250/30 dev eth1
-        - ip link set eth1 up
-        - ip route replace default via 111.198.14.249
+      exec: [ip link set eth1 up]
   links:
     - endpoints: ["a:eth1", "r1:eth1"]
     - endpoints: ["r1:eth2", "r2:eth1"]

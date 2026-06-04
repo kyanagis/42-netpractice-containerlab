@@ -1,4 +1,4 @@
-# topology: level08 (構成とアドレスはREADME.md)
+# topology: level08 (配線のみ。L3は solution.conf/problem.conf)
 # containerlab topology format: https://containerlab.dev/manual/topo-def-file/
 name: level08
 mgmt:
@@ -13,11 +13,7 @@ topology:
         net.ipv4.ip_forward: "1"
         net.ipv4.conf.all.rp_filter: "0"
         net.ipv4.conf.default.rp_filter: "0"
-      exec:
-        - ip addr add 163.62.250.1/28 dev eth1
-        - ip addr add 8.8.8.8/32 dev lo
-        - ip link set eth1 up
-        - ip route add 137.13.144.0/26 via 163.62.250.12
+      exec: [ip link set eth1 up]
     r1:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
@@ -26,12 +22,8 @@ topology:
         net.ipv4.conf.all.rp_filter: "0"
         net.ipv4.conf.default.rp_filter: "0"
       exec:
-        - ip addr add 163.62.250.12/28 dev eth1
-        - ip addr add 137.13.144.62/30 dev eth2
         - ip link set eth1 up
         - ip link set eth2 up
-        - ip route add 137.13.144.0/26 via 137.13.144.61
-        - ip route replace default via 163.62.250.1
     r2:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
@@ -40,27 +32,17 @@ topology:
         net.ipv4.conf.all.rp_filter: "0"
         net.ipv4.conf.default.rp_filter: "0"
       exec:
-        - ip addr add 137.13.144.61/30 dev eth1
-        - ip addr add 137.13.144.14/28 dev eth2
-        - ip addr add 137.13.144.30/28 dev eth3
         - ip link set eth1 up
         - ip link set eth2 up
         - ip link set eth3 up
-        - ip route replace default via 137.13.144.62
     c:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 137.13.144.1/28 dev eth1
-        - ip link set eth1 up
-        - ip route replace default via 137.13.144.14
+      exec: [ip link set eth1 up]
     d:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 137.13.144.17/28 dev eth1
-        - ip link set eth1 up
-        - ip route replace default via 137.13.144.30
+      exec: [ip link set eth1 up]
   links:
     - endpoints: ["inet:eth1", "r1:eth1"]
     - endpoints: ["r1:eth2", "r2:eth1"]

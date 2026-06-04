@@ -1,4 +1,4 @@
-# topology: router (構成とアドレスはREADME.md)
+# topology: router (配線のみ。rのip_forward等は既与。L3は solution.conf/problem.conf)
 # containerlab topology format: https://containerlab.dev/manual/topo-def-file/
 name: router
 mgmt:
@@ -14,24 +14,16 @@ topology:
         net.ipv4.conf.all.rp_filter: "0"
         net.ipv4.conf.default.rp_filter: "0"
       exec:
-        - ip addr add 10.0.1.1/24 dev eth1
-        - ip addr add 10.0.2.1/24 dev eth2
         - ip link set eth1 up
         - ip link set eth2 up
     h1:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 10.0.1.10/24 dev eth1
-        - ip link set eth1 up
-        - ip route replace default via 10.0.1.1
+      exec: [ip link set eth1 up]
     h2:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 10.0.2.10/24 dev eth1
-        - ip link set eth1 up
-        - ip route replace default via 10.0.2.1
+      exec: [ip link set eth1 up]
   links:
     - endpoints: ["h1:eth1", "r:eth1"]
     - endpoints: ["r:eth2", "h2:eth1"]

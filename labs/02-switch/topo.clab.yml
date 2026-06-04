@@ -1,4 +1,4 @@
-# topology: switch (構成とアドレスはREADME.md)
+# topology: switch (配線のみ。sw1のブリッジは既与のL2インフラ。L3は solution.conf/problem.conf)
 # containerlab topology format: https://containerlab.dev/manual/topo-def-file/
 name: switch
 mgmt:
@@ -21,21 +21,15 @@ topology:
     h1:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 10.10.10.1/24 dev eth1
-        - ip link set eth1 up
+      exec: [ip link set eth1 up]
     h2:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 10.10.10.2/24 dev eth1
-        - ip link set eth1 up
+      exec: [ip link set eth1 up]
     h3:
       kind: linux
       image: ghcr.io/srl-labs/network-multitool
-      exec:
-        - ip addr add 10.10.10.3/24 dev eth1
-        - ip link set eth1 up
+      exec: [ip link set eth1 up]
   links:
     - endpoints: ["sw1:eth1", "h1:eth1"]
     - endpoints: ["sw1:eth2", "h2:eth1"]
