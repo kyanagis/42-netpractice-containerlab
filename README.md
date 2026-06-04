@@ -2,8 +2,15 @@
 
 ## 起動（校舎/rootless Docker）
 
+推奨は named volume を repo として共有する起動方法。inner containerlab からも同じ
+volume を見られるので、rootless Docker でも host path の権限問題を踏まない。
+
+既存の `np-repo` volume は新しいイメージで自動更新されない。イメージ更新後や
+`bin/np-clab-env.sh` が無い古い環境では、一度 volume も作り直す。
+
 ```bash
 docker rm -f np 2>/dev/null || true
+docker volume rm np-repo 2>/dev/null || true
 docker volume create np-repo >/dev/null
 docker run -d --name np --privileged --pid host \
   -p 2222:2222 \
@@ -16,8 +23,11 @@ docker run -d --name np --privileged --pid host \
 
 ssh lab@localhost -p 2222   # pass: lab
 cd netpractice-containerlab
-./lab.sh up 00-hello && ./lab.sh test 00-hello && ./lab.sh down 00-hello
+./lab.sh solve 00-hello && ./lab.sh down 00-hello
 ```
+
+`CLAB_WORKSPACE_VOLUME` を付け忘れた場合も、コンテナ内の `./lab.sh` は自動で
+workspace volume を作って同期する。別の校舎 PC では、上の起動コマンドをそのまま使う。
 
 VS Code は Remote-SSH で `np-lab` に接続し、Remote 側へ `srl-labs.vscode-containerlab` を入れる。
 
