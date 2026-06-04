@@ -29,3 +29,24 @@ run_goals() {
   printf '  %d/%d goals reachable\n\n' "$pass" "$total"
   [[ "$pass" -eq "$total" ]]
 }
+
+# 深掘りラボ用の汎用チェック。CHECKS=("id|説明|node|sh -c で実行する判定コマンド")
+# 判定コマンドはパイプ可(readの最終変数が残り全部を受ける)。exit0=OK。
+run_checks() {
+  local pass=0 total=0
+  printf '\n  lab: %s (%s)\n' "$LAB" "$RUNTIME"
+  printf '  %-4s %-30s %-8s %s\n' GOAL CHECK NODE RESULT
+  printf -- '  ----------------------------------------------------------------\n'
+  for g in "${CHECKS[@]}"; do
+    IFS='|' read -r id desc node cmd <<<"$g"
+    total=$((total+1))
+    if docker exec "clab-${LAB}-${node}" sh -c "$cmd" >/dev/null 2>&1; then
+      printf '  %-4s %-30s %-8s %s\n' "$id" "$desc" "$node" "[OK]"; pass=$((pass+1))
+    else
+      printf '  %-4s %-30s %-8s %s\n' "$id" "$desc" "$node" "[KO]"
+    fi
+  done
+  printf -- '  ----------------------------------------------------------------\n'
+  printf '  %d/%d checks pass\n\n' "$pass" "$total"
+  [[ "$pass" -eq "$total" ]]
+}
