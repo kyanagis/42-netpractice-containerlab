@@ -1,0 +1,25 @@
+# topology: nat (配線/アドレスは既与。NAT/FWルール(iptables)を solution/problem で埋める)
+# iptables: https://www.netfilter.org/  / web(:80)は network-multitool 既定のnginx
+name: nat
+mgmt:
+  network: npclab
+  ipv4-subnet: 172.30.30.0/24
+topology:
+  nodes:
+    lsw: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: [
+      "ip link add br0 type bridge", "ip link set br0 up",
+      "ip link set eth1 master br0", "ip link set eth2 master br0", "ip link set eth3 master br0",
+      "ip link set eth1 up", "ip link set eth2 up", "ip link set eth3 up" ] }
+    gw:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      sysctls: { net.ipv4.ip_forward: "1", net.ipv4.conf.all.rp_filter: "0", net.ipv4.conf.default.rp_filter: "0" }
+      exec: ["ip link set eth1 up", "ip link set eth2 up"]
+    cli: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+    web: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+    ext: { kind: linux, image: ghcr.io/srl-labs/network-multitool, exec: ["ip link set eth1 up"] }
+  links:
+    - endpoints: ["lsw:eth1", "cli:eth1"]
+    - endpoints: ["lsw:eth2", "web:eth1"]
+    - endpoints: ["lsw:eth3", "gw:eth1"]
+    - endpoints: ["gw:eth2", "ext:eth1"]
